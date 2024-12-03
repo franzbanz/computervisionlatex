@@ -1,0 +1,142 @@
+%% ============================================================
+%% Vorlage für ILS Abschlussarbeit
+%% ============================================================
+%% Datum: 03.07.2019
+%% Autor: Johannes Kuhnert Roca
+%% Email: johannes.kuhnert-roca@ils.uni-stuttgart.de
+%% ============================================================
+%%  ***  HINWEIS
+%% ============================================================
+%% Voraussetzung:
+%% MiKTeX, ActivePerl und ein Latex-Editor, wie z.B. TeXStudio, TeXMaker, TexPad, VS Code, etc.
+%%
+%% Konfiguration des Latex-Editor:
+%%		Kompilierungsschritte bei Erzeugung des PDFs: 1. pdflatex 2. makeglossaries 4. pdflatex
+%%		Standard-Bibliographie: Bibtex
+%%
+%% Getestet auf TeXstudio und TexPad 
+%% ============================================================
+
+% Koma - Script Version 3.21
+\documentclass[english, a4paper, 11pt, twoside, numbers=noenddot, openright,version=3.21]{scrbook}
+
+
+%Input Daten
+\input{./Layout_Settings/Packages.tex}
+\input{./Layout_Settings/Layout.tex}
+\input{./Layout_Settings/Usersettings.tex}
+\input{./Glossary/GlossaryandAcronym.tex}
+
+
+\title{Visualization Verification of Complex Avionic Models Using Computer Vision}
+\author{Franz Köhler}
+\date{07.10.2024}
+
+%% ============================================================
+%%  ***  HYPERLINKS for pdfTeX /
+%% ============================================================
+\hypersetup{
+	pdftitle    = {\thetitle},
+	pdfsubject  = {Visualization Verification of Complex Avionic Models Using Computer Vision},
+	pdfauthor   = {\theauthor},
+	pdfkeywords = {bachelorthesis, computervision, python, opencv, uml, verification},
+	pdfborder   = 0 0 0,
+	plainpages  = false,
+	bookmarksnumbered = true,
+}
+
+\begin{document}
+
+
+%% ============================================================
+%%  ***  Cover
+%% ============================================================
+\hypersetup{pageanchor=false}
+\pagenumbering{gobble}
+\includepdf[pages={1}]{./Cover/cover.pdf}
+\cleardoublepage
+\hypersetup{pageanchor=true}
+
+%% ============================================================
+%%  ***  Preamble
+%% ============================================================
+
+\pagenumbering{Roman}
+
+% Sperrvermerk
+\include{Preamble/blocking_notice}
+
+% Aufgabenstellung
+\includepdf[pages={1-3}]{Preamble/task.pdf}
+
+% Erklärung zur selbständigen Arbeit
+\include{Preamble/statement_of_authorship} % 
+
+% Kurzzusammenfassung/Abstract - (1/2 Seite Deutsch, 1/2 Seite Englisch)
+\include{Preamble/abstract_en}
+\cleardoublepage
+\include{Preamble/abstract_ger}
+\cleardoublepage
+
+% Danksagung
+%\include{./Preamble/Danksagung}
+%\cleardoublepage
+
+
+%% ============================================================
+%%  ***  Contents and Lists
+%% ============================================================
+\phantomsection
+
+% Contents
+\tableofcontents
+
+% Figures
+\listoffigures
+
+% % Tables
+% \listoftables
+% \cleardoublepage
+
+% %Glossar
+% \printglossary[style=super,title=Glossary]
+% \cleardoublepage
+
+% % Abbrevations
+% \printglossary[type=\acronymtype,title=Index of abbreviations]
+% \cleardoublepage
+
+% % Symbols and Units
+% \printglossary[type=symbolslist,style=symbunitlong,title={Index of Symbols and Units}]
+% \cleardoublepage
+
+
+%% ============================================================
+%%  ***  Chapters
+%% ============================================================
+\pagenumbering{arabic}
+\include{Chapters/introduction}
+\include{Chapters/concepts}
+\include{Chapters/generalization}
+\include{Chapters/implementation}
+\include{Chapters/demonstration}
+\include{Chapters/discussion}
+
+%% ============================================================
+%%  ***  Bibliography
+%% ============================================================
+\normalem	% Entfernt Unterstrich des Titels
+\printbibliography[heading=bibintoc,title=Bibliography] %Literaturverzeichnisse ausgeben
+
+%% ============================================================
+%%  ***  Appendix
+%% ============================================================
+\appendix
+% Seitennummerierung wird geändert
+\pretocmd{\chapter}{%
+	\cleardoublepage
+	\pagenumbering{arabic}%
+	\renewcommand*{\thepage}{\thechapter\arabic{page}}%
+}{}{}
+\include{./Appendix/Appendix_A}
+\end{document}
