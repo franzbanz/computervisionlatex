@@ -14,12 +14,12 @@ Edges represent connections between vertices, inputs and outputs. Detecting edge
     \label{fig_kernel_ver}
 \end{wrapfigure}
 Since there are only vertical and horizontal edges within XGEE, two kernels will be used to find all pixels containing either part of a vertical or horizontal edge. The \textit{filter2D()} function places the kernel anchor (usually the top left value of the kernel) on top of a pixel, with the rest of the kernel overlapping the corresponding local pixels.\\
-The kernel values are then multiplied by the corresponding pixel values underneath and added together. The result is saved and placed on the location of the anchor. The kernel on the right \ref{fig_kernel_ver} is rotated by 90\textdegree  to generate the horizontal kernel. The same process can be written as equation \ref{eq_filter2D}, where \(H\) is the resulting matrix, \(I\) is the original image and \(K\) is the used kernel. This process is repeated for every pixel and, depending on the structure of the kernel, it can also be used to blur or sharpen an image \cite{web_filter2D}.\\
+The kernel values are then multiplied by the corresponding pixel values underneath and added together. The result is saved and placed on the location of the anchor. The kernel on the right \ref{fig_kernel_ver} is rotated by 90\textdegree  to generate the horizontal kernel. The same process can be written as equation \ref{eq_filter2D}, where $H$ is the resulting matrix, $I$ is the original image and $K$ is the used kernel. This process is repeated for every pixel and, depending on the structure of the kernel, it can also be used to blur or sharpen an image \cite{web_filter2D}.\\
 Each value in the processed image is normalized to an 8-bit integer between 0 and 255. This allows the data to be visualized as a gray scale image \ref{fig_filter2d} and processed using OpenCV's \textit{threshholding()} function \ref{fig_threshhold}. As illustrated in figure \ref{fig_comparison_filter}, ports and letters are sometimes misidentified as edges. Additionally, intersections of edges and points where horizontal and vertical edges meet are not immediately detected. These challenging areas will be processed individually in a later step in the edge detection pipeline. Apart from these specific cases, the method effectively extracts all pixels corresponding to vertical and horizontal edges, provided their widths match those of the used kernels.
 \begin{equation}
 \label{eq_filter2D}
     H(x, y) = \sum_{i=0}^{M_i-1} \sum_{j=0}^{M_j-1} I(x + i - a_i,y + j - a_j)K(i, j)
-\end{equation}\\
+\end{equation}
 
 \newpage
 
@@ -108,15 +108,94 @@ Another issue may arise if the edges are configured by the user in an unexpected
 \section{Vertex Detection}
 Vertices represent distinct visual elements within XGEE such as functions, devices, containers or IO ports. Identifying these vertices is critical for interpreting the structural arrangement of diagrams. This section introduces a template-matching approach to address problems including overlapping vertices and varying sizes, ensuring a more reliable vertex detection in all relevant diagram types within XGEE.
 
-A major problem in template matching is the differing occurances of the searched for template in the images. Especially in the allocations editor, there are blue subtasks inside the grey device boxes and blue arrows inside the container. Each of these vertices "contaminates" the underlying vertex and lowers the number of matching pixels in that area. To combat this issue, the subtasks, which are not obscured by other vertices and cannot be resized, are found first using regular template matching. The found bounding boxes are then covered using the same grey color as the surrounding device boxes. This ensures the detection of the devices in the following step works more reliable, independent of the number of subtasks inside the device.\\
-for the containers, this approach would work as well, however there is a simpler solution. Because the signal arrows and their attached names tend to be placed in the center of the container, a mask can be used when template matching, to only consider the outer edge of pixels of the container. As long as it has a color different of its surroundings, this approach supplies a simmilar amount of reliablity as the solution used for the subtask detection.
+A major problem in template matching is the diversity of vertices within XGEE's three editor models. For example, the functions editor contains only functions, while the hardware editor contains devices and IO ports and the allocations editor contains devices, signal containers, signal arrows and subtasks which overlap with devices and contain their own set of subvertices. Additionally, some vertices are scalable, while others are not. Scalable vertices require extra processing to ensure accurate detection. However, applying this processing universally to all vertices would result in unpredictable behavior.
+
+\subsection{Methology}
+To address these challenges, the list of unique vertices within the current editor model is analyzed to identify any vertices with the \textit{isSubVertexBody} flag set, which indicates they are subvertices, such as subtasks, that overlap with other vertices. These subvertices are prioritized and placed at the beginning of the list of vertices. This way, the vertex detection method can progressively simplify the image by erasing detected subvertices after the first iteration of the vertex detection function, allowing the underlying vertices to be detected without obstruction. Other relevant flags are: 
+\begin{itemize}
+    \item \textit{isScalable} which indicates whether the vertex can be scaled
+    \item \textit{filepath} which specifies the path to the template image
+    \item \textit{sizeX} and \textit{sizeY} which specify the size of the vertex
+    \item \textit{parent\_filepath} which specifies the path to the parent vertex in case it it a subvertex
+\end{itemize}
+The method iterates through the list of unique vertices in the current editor model. If subvertices were identified in the previous step, they are processed first. They are removed from the image by setting all pixels within the bounding box of the subvertex to the \textit{fill} color of the parent vertex \ref{fig_draw_boxes}.
+\begin{figure}[htb]
+    \centering
+    \begin{minipage}[b]{0.45\textwidth}
+        \includegraphics[width=\textwidth]{Pictures/draw_boxes_before.png}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[b]{0.45\textwidth}
+        \includegraphics[width=\textwidth]{Pictures/draw_boxes_after.png}
+    \end{minipage}
+    \caption{Original image from allocations editor containing subvertices (left) and modified image with subvertices removed (right).}
+    \label{fig_draw_boxes}
+\end{figure}
+After processing the subvertices, a new image wrapper object is created using the modified image. The method then iterates through the list of remaining vertices, loading the template image of each vertex using the \textit{filepath} attribute. Depending on the \textit{isScalable} flag, an object of either the \textit{ScalableVertexDetector} or \textit{PortDetector} class is created and the corresponding vertex detection is applied.\\
+In case of unscalable vertices, OpenCV's \textit{matchTemplate} and \textit{normalize} functions are applied. The resulting data is threshholded to identify the positions of all found vertices. To define the vertex boundaries, the \textit{sizeX} and \textit{sizeY} attributes are used, allowing bounding boxes of the correct size to be drawn with the detected match serving as the upper-left corner. This approach is effective for detecting vertices like IO ports and subtasks.\\
+In case of scalable vertices, this approach does not work because the size of the vertex is not fixed, which reduces the certainty of found matches drastically and eliminates constant \textit{sizeX} and \textit{sizeY} values as a reliable method for defining bounding boxes.\\
+Scalable Vertices within XGEE are Functions and Devices.
+The initial template matching algorithm frequently exhibited inaccuracies when applied to large function containers. Specifically, it tended to produce higher similarity scores at the corners of the container, as the black border surrounding the vertex at these locations more closely resembled the black border in the template image. In contrast, the absence of a black border in the center of the container led to lower similarity scores. In extreme cases, this resulted in the center of the vertex not being detected at all, with the algorithm instead falsely identifying four smaller vertices at the container's corners. The same issue occurres with large devices.\\
+To detect these vertices regardless of their dimensions, multiple templates of the same size for different parts of the large vertex are required.
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\linewidth]{Pictures/templates.png}
+    \caption{Templates for scalable vertex detection}
+    \label{fig_templates}
+\end{figure}
+Template matching is performed iteratively with each template, and the results are compared after each iteration. The highest similarity score for each pixel is retained and combined into the resulting data, which is then threshholded to extract all potential matches.\\
+Typically, numerous matches are identified during this process. To eliminate false positives and process the matches to determine the differently sized bounding boxes of the vertices, an algorithm described in \cite{og_paper} is applied.\\
+The original image is thresholded to distinguish foreground from background pixels, as illustrated in \ref{fig_foreground_threshhold}. This foreground information is then utilized to filter the detected matches, retaining only those located within the foreground area. This process effectively removes false positives which often occur because the black pixels along the edges and borders of function- or device containers closely resemble those in the black borders in the template images.
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.55\linewidth]{Pictures/foreground_threshhold.png}
+    \caption{Image from allocations editor (left) with foreground threshhold applied (right).}
+    \label{fig_foreground_threshhold}
+\end{figure}
+For each remaining detected match, the \textit{sizeX} and \textit{sizeY} attributes are used to create a filled bounding box around the detected position. Since multiple matches are often found at various locations within a single large vertex, the overlapping bounding boxes collectively form a larger structure. This structure is then simplified into a single bounding box using OpenCV's \textit{findContours} function.
+\begin{figure}[htb]
+    \centering
+    \begin{minipage}[b]{0.45\textwidth}
+        \includegraphics[width=\textwidth]{Pictures/many_templates_before.png}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[b]{0.45\textwidth}
+        \includegraphics[width=\textwidth]{Pictures/many_templates_after.png}
+    \end{minipage}
+    \caption{Image from allocations editor containing a large, partially detected device using one template(left) and containing a large, fully detected device using multiple templates(right).}
+    \label{fig_many_templates}
+\end{figure}
+This approach successfully detects all scalable vertices within XGEE, regardless of their dimensions. Using both scalable and non-scalable vertex detection methods ensures that all vertices are detected accurately, regardless of their size or complexity. The method is capable of detecting all vertices in the 10 test cases within this paper, including subvertices and scalable vertices.
+
+\subsection{Further Improvements}
+The current method is capable of reliably detecting all vertices within XGEE, including subvertices and scalable vertices. However, enhancing the reliability of subsequent steps in the visualization verification process could be achieved by erasing all detected vertices after processing. To implement this, the method would need to:
+\begin{itemize}
+    \item Process vertices in hierarchical order to prevent subvertices to be erased with their parent vertices before being detected by the method.
+    \item Dynamically update the input image after each iteration.
+    \item Correctly handle cases where subvertices, such as IO ports, only partially overlap with their parent vertices
+\end{itemize}
+This approach could also be adapted to erase other components, such as text and edges after their detection, as these elements can interfere with the accurate identification of remaining visualization components.\\
+Furthermore, the method could be expanded to detect subvertices of subtasks, which are currently excluded from detection due to their small size. These \textit{subsubvertices} are challenging to differentiate from noise, character fragments, or edge segments using OpenCV. Employing image preprocessing techniques or refining or exchanging the template matching method could improve the detection of these smaller elements.
 
 \section{Text Recognition}
 The original text detection in XGEE utilized Pytesseract, an open-source optical character recognition (OCR) engine developed and sponsored by Google in 2006. Pytesseract required separate installation from other packages and could only detect text in images that had been preprocessed. Additionally, the output data required extensive postprocessing to become usable. While Pytesseract demonstrated high accuracy and speed, it struggled to reliably detect small text or text with low contrast to the background. Its optimization for structured text formats, such as those found in books, further hindered its performance in XGEE, where text can appear in varying orientations, sizes, and positions. These limitations made reliable text detection using Pytesseract difficult to achieve.
 \subsection{Methology}
-After evaluating various OCR engines, including EasyOCR [https://pypi.org/project/easyocr/], Doctr [https://pypi.org/project/python-doctr/], and Keras-OCR [https://pypi.org/project/keras-ocr/], EasyOCR proved to be the most suitable alternative.
-EasyOCR is a deep-learning-based OCR engine that reliably detects text in images, even under challenging conditions such as low contrast or resolution. Although it operates more slowly on modern CPUs compared to some alternatives, it performs significantly faster on GPUs. Additionally, its ability to detect text in multiple languages adds potential value for future applications. Integration of EasyOCR into the XGEE editor for the user is straightforward, as it can be installed directly via pip install easyocr through the requirements.txt file without requiring additional dependencies or downloads. Unlike Pytesseract, EasyOCR does not necessitate image preprocessing, and it structures found characters into words and sentences automatically based on proximity, eliminating the need for extensive postprocessing. These advantages make EasyOCR the optimal choice for the updated text detection pipeline within XGEE.
+After evaluating various OCR engines, including EasyOCR \cite{easyocr_doc}, Doctr \cite{doctr_doc}, and Keras-OCR \cite{keras_ocr_doc}, EasyOCR proved to be the most suitable alternative.
+EasyOCR is a deep-learning-based OCR engine that reliably detects text in images, even under challenging conditions such as low contrast or resolution. Although it operates more slowly on modern CPUs compared to some alternatives, it performs significantly faster on GPUs. Additionally, its ability to detect text in multiple languages adds potential value for future applications. Integration of EasyOCR into the XGEE editor for the user is straightforward, as it can be installed directly via pip install easyocr through the requirements.txt file without requiring additional dependencies or downloads. Unlike Pytesseract, EasyOCR only necessitates minimal image preprocessing, and it structures found characters into words and sentences automatically based on proximity, eliminating the need for extensive postprocessing. These advantages make EasyOCR the optimal choice for the updated text detection pipeline within XGEE.
 
-First, a reader object is created and the language of the text is specified. The readtext function of the reader object is then called with the image as an argument. The image has to be padded to have a square shape, so there are no problems rotating the data later. This function returns a list of tuples, containing the detected text, its bounding box and a certainty factor. This step is repeated with the rotated image. The positions of the bounding boxes of the found rotated text are then rotated around the center of the image to reallign them with the found text of the original image. Reading an image which contains rotated text usually results in many falsely read characters, because for example 'o' and 'l' can be interpreted regardless of orientation. To filter out the falsely red characters, the algorithm first combines the found results of both ocr-searches and then removes every word shorter than three letters. Because easyocr automatically groups detected characters into words and sentences, this is a simple and effective method to filter out falsely read characters which is able to detect all text in the 10 testcases within this paper. Using this approach also allows the same algorithm to be used for all images, regardless of the XGEE editor they were created in.
+First, a reader object is created and the language of the text is specified. The readtext function of the reader object is then called with the image as an argument. The image has to be padded to have a square shape, so there are no problems rotating the data later. To ensure a more reliable detection, the image is slightly blurred and upscaled to counter any aliasing and small characters. The text detection function then returns a list containing the detected text, its bounding box, and a certainty factor. Parameters can be specified when calling this function to adjust the expected text properties, enhancing the reliability of the detection. For example in earlier versions, EasyOCR struggled to detect single characters, but with these parameter adjustments, this issue has been resolved. The detection process is repeated for the rotated version of the image to ensure comprehensive results. This step is repeated with the rotated image. The positions of the bounding boxes of the found rotated text are then rotated around the center of the image to reallign them with the found text of the original image. Reading an image which contains rotated text usually results in many falsely read characters, because for example 'o' and 'l' can be interpreted regardless of orientation. To filter out the falsely red characters, the algorithm first combines the found results of both ocr-searches and then removes every word shorter than three letters.
+\begin{figure}[htb]
+    \centering
+    \includegraphics[width=0.8\linewidth]{Pictures/text_before.png}
+    \caption{Input image from function editor containing rotated text}
+    \label{fig_text_before}
+
+    \centering
+    \includegraphics[width=0.8\linewidth]{Pictures/text_after.png}
+    \caption{Output image from function editor containing text bounding boxes}
+    \label{fig_text_after}
+\end{figure}
+Because easyocr automatically groups detected characters into words and sentences, this is a simple and effective method to filter out falsely read characters which is able to detect all text in the 10 testcases within this paper. Using this approach also allows the same algorithm to be used for all images, regardless of the XGEE editor they were created in.
 \subsection{Future Improvements}
-In the future, this method could be improved by using a more advanced algorithm to filter out falsely read characters. and checking the current editor to only search for rotated characters if they are actually present in the image.
+In the future, this method could be enhanced by incorporating a more advanced algorithm to filter out incorrectly detected characters. Additionally, identifying the specific editor type could allow the system to selectively search for rotated characters only when they are expected to be present in the image.\\
+Currently, the text recognition is the most time consuming component of the visualization verification process. Optimizing its performance would significantly reduce the overall processing time. This could be achieved by running the visualization verification on a gpu, parallelize the text detection to run simultaneous to the edge- and vertex detection or by using a more traditional text detection algorithm which does not require as much computational power as EasyOCR. These improvements would enable the system to process larger models more quickly and efficiently, addressing the current bottleneck in the pipeline.\\
