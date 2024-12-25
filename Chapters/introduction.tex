@@ -3,7 +3,7 @@
 
 Development of complex systems requires an efficient way for engineers to ensure the correctness of the developed software. Domain Specific Modeling (DSM) can achieve this through automatic code generation and block-diagram visualizations, thus significantly reducing the risk of faulty applications and enabeling engineers to work more effectively.\\
 In safety-critical development processes however, DSM can only be used without subsequent manual verification, if the DSM tools work correctly. This can either be achieved through time intensive qualified software development processes, which ensure accurate and reliable visualization of DSM through the tool itself, or through the use of unverified DSM tools followed by the subsequent use of a small visualization verification tool to ensure the correctness of the application.\\
-In low-cost projects with high safety requirements, a cost-effective qualification method is crucial, highlighting the potential of the latter approach for a qualifiable graphical verification tool fur use in DSM.
+In low-cost projects with high safety requirements, a cost-effective qualification method is crucial, highlighting the potential of the latter approach for a qualifiable graphical verification tool for use in DSM.
 
 The Institute for Aircraft Systems is currently developing a way for avionic models to be developed inside a web-based graphical model editor called \textit{eXtensible Graphical EMOF Editor} or \textit{XGEE}.\\
 XGEE uses three kinds of \textit{tokens} within three distinct editors to visualize avionic models. They are:
@@ -43,20 +43,26 @@ This paper builds upon the work of \cite{og_paper} to automate the verification 
 By rebuilding a model from the recognized tokens and comparing it to the original, visualization errors become apparent and can be indicated to the user, including issues such as unclear signal intersections, signals being obscured by blocks, text labels being obscured by signals or blocks, blocks being scaled down to the point of disappearing, or blocks obscuring other blocks.\\
 The goal of this thesis is to provide a tool that can be used to verify the correctness of the visualization of avionic models within XGEE, thus enabling engineers to work more effectively and with a higher degree of confidence.
 
+
+\section{Overview of Computer Vision}
+What to Write: Define computer vision and its role in modern applications.
+Mention its significance in interpreting visual data and extracting structured information.
+Briefly touch on key algorithms and tools (e.g., OpenCV, deep learning in vision).
+
+
+
+\section{Domain Specific Modeling (DSM)}
+What to Write: Explain DSM and its purpose in creating specialized models for particular domains.
+Describe how XGEE leverages DSM to simplify and automate diagram-based design processes.
+Provide examples of DSM in real-world applications.
+\section{The Role of Visualization in Diagram-Based Systems}
+What to Write: Discuss why accurate diagram visualization is essential for tools like XGEE.
+Highlight the challenges of interpreting complex diagrams with overlapping elements and multiple scales.
+\section{Challenges in XGEE's visualization verification}
+What to Write: Summarize the primary issues in the XGEE editor that motivated your work, such as edge detection, vertex identification, and text recognition.
+Set the stage for the methods you implemented to overcome these challenges.
 \section{State of the Art}
-\label{sec_state_of_the_art}
 
-% The visualization verification tool in \cite{og_paper} could preprocess an automatic screenshot, tokenize edges, vertices and labels, rebuild a model based on the recognized tokens and compare the recognized model with the original.\\
-% To preprocess the screenshot, the XGEE window is found by searching for the distinct colors of the XGEE title- and status bar and defining the bounding box of the actual block diagram. The grey pixels of the grid are replaced with white, since they are not relevant for the model tokenization.
 
-% The vertex detection algorithm was able to detect blue function containers, inputs and outputs with great accuracy, as long as they did not exceed the size limit set by the used template.
-% The original edge detection algorithm was able to detect edges that went from left to right and from top to bottom with high accuracy. 
-% The original text detection was using PyTesseract and worked very well, if the text was oriented properly.
 
-\section{Computer Vision}
-    
-\section{Domain Specific Modeling}
-
-\section{XGEE}
-
-\section{OpenCV}
+This chapter reviews the existing research and tools related to diagram interpretation, edge detection, vertex detection, and text recognition. By highlighting their strengths and limitations, this chapter establishes the need for the methods developed in XGEE.

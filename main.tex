@@ -1,25 +1,4 @@
-%% ============================================================
-%% Vorlage für ILS Abschlussarbeit
-%% ============================================================
-%% Datum: 03.07.2019
-%% Autor: Johannes Kuhnert Roca
-%% Email: johannes.kuhnert-roca@ils.uni-stuttgart.de
-%% ============================================================
-%%  ***  HINWEIS
-%% ============================================================
-%% Voraussetzung:
-%% MiKTeX, ActivePerl und ein Latex-Editor, wie z.B. TeXStudio, TeXMaker, TexPad, VS Code, etc.
-%%
-%% Konfiguration des Latex-Editor:
-%%		Kompilierungsschritte bei Erzeugung des PDFs: 1. pdflatex 2. makeglossaries 4. pdflatex
-%%		Standard-Bibliographie: Bibtex
-%%
-%% Getestet auf TeXstudio und TexPad 
-%% ============================================================
-
-% Koma - Script Version 3.21
 \documentclass[english, a4paper, 11pt, twoside, numbers=noenddot, openright,version=3.21]{scrbook}
-
 
 %Input Daten
 \input{./Layout_Settings/Packages.tex}
@@ -99,7 +78,7 @@
 % \cleardoublepage
 
 %Glossar
-% \printglossary[style=super,title=Glossary]
+\printglossary[style=super,title=Glossary]
 % \cleardoublepage
 
 % % Abbrevations
@@ -118,7 +97,7 @@
 \include{Chapters/introduction}
 \include{Chapters/concepts}
 \include{Chapters/generalization}
-\include{Chapters/implementation}
+\include{Chapters/integration}
 \include{Chapters/demonstration}
 \include{Chapters/discussion}
 
